@@ -1,0 +1,119 @@
+extends layout
+block content
+    #map
+    script(type='text/javascript' src='../static/js/leaflet-search.js')
+    script(src='../static/src/L.Control.Locate.js')
+    script.
+        //- var geo = JSON.parse(document.getElementById("geo").value);
+        var geo = !{JSON.stringify(jsonData)};
+        console.log(geo);
+        var mbAttr = 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+            'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+            mbUrl = 'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw',
+            a = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+        var grayscale = L.tileLayer(mbUrl, {
+                id: 'mapbox/light-v9',
+                tileSize: 512,
+                zoomOffset: -1,
+                attribution: mbAttr
+            }),
+            streets = L.tileLayer(mbUrl, {
+                id: 'mapbox/streets-v11',
+                tileSize: 512,
+                zoomOffset: -1,
+                attribution: mbAttr
+            }),
+            b = L.tileLayer(a);
+
+        var map = new L.Map('map', {
+            zoom: 13,
+            center: new L.latLng([21.0228161, 105.801944]),
+            layers: grayscale
+        }); //set center from first location
+
+        map.addLayer(new L.TileLayer(a)); //base layer
+
+
+        var markersLayer = new L.LayerGroup(); //layer contain searched elements
+        map.addLayer(markersLayer);
+
+        map.addControl(new L.Control.Search({
+            layer: markersLayer
+        })); //inizialize search control
+
+        ////////////populate map with markers from sample data
+        for (i in geo) {
+            var title = geo[i].title, //value searched
+                loc = geo[i].loc, //position found
+                marker = new L.Marker(new L.latLng(loc), {
+                    title: title
+                }); //se property searched
+            marker.bindPopup('<div class="bp"><img style="max-width:250px" src="' + geo[i].img + '"/><br>' + title + '"</div>');
+            markersLayer.addLayer(marker);
+        }
+
+        var baseLayers = {
+            "Grayscale": grayscale,
+            "Streets": streets,
+            "Original": b
+        };
+
+        var overlays = {
+            "Cities": markersLayer
+        };
+
+        L.control.layers(baseLayers, overlays).addTo(map);
+
+        //đinhj vi
+        lc = L.control.locate({
+            strings: {
+                title: "Show me where I am, yo!"
+            }
+        }).addTo(map);
+
+        //chỉ chuột nấy tọa độ
+        L.control.coordinates({
+            position: "bottomleft", //optional default "bootomright"
+            decimals: 2, //optional default 4
+            decimalSeperator: ".", //optional default "."
+            labelTemplateLat: "Latitude: {y}", //optional default "Lat: {y}"
+            labelTemplateLng: "Longitude: {x}", //optional default "Lng: {x}"
+            enableUserInput: true, //optional default true
+            useDMS: false, //optional default false
+            useLatLngOrder: true, //ordering of labels, default false-> lng-lat
+            markerType: L.marker, //optional default L.marker
+            markerProps: {}, //optional default {},
+            labelFormatterLng: function(lng) {
+                return lng + " lng"
+            }, //optional default none,
+            labelFormatterLat: function(lat) {
+                return lat + " lat"
+            }, //optional default none
+            //optional default none
+        }).addTo(map);
+
+        //vẽ của thầy ngọc
+
+        drawnItems = L.featureGroup().addTo(map);
+
+        map.addControl(new L.Control.Draw({
+            edit: {
+                featureGroup: drawnItems,
+                poly: {
+                    allowIntersection: false
+                }
+            },
+            draw: {
+                polygon: {
+                    allowIntersection: false,
+                    showArea: true
+                }
+            }
+        }));
+
+        map.on(L.Draw.Event.CREATED, function(event) {
+            var layer = event.layer;
+
+            drawnItems.addLayer(layer);
+        });
